@@ -110,13 +110,13 @@ fn main() -> Result<(), Box<dyn Error>> {
             println!("Dumping data to data.txt in hex format.");
 
             //dump in hex repr
-            write!(file, "\n========= CONTENT OF RAM IN HEX =========\n");
+            write!(file, "\n========= CONTENT OF MEMORY IN HEX =========\n");
             for d in &data {
                 write!(file, "{:X}", *d)?;
             }
 
             //dump in ascii repr
-            write!(file, "\n========= CONTENT OF RAM IN ASCII =========\n");
+            write!(file, "\n========= CONTENT OF MEMORY IN ASCII =========\n");
             for d in &data {
                 write!(file, "{}", *d as char)?;
             }

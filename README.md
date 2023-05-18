@@ -25,7 +25,7 @@ openssl req -x509 -nodes -days 365 -newkey rsa -keyout cert.pem -out cert.pem
 
 ### Run a vulnerable server
 ```zsh
-<path to vulnerable OpenSSL>/apps/openssl s_server -cert mycert.pem
+<path to vulnerable OpenSSL>/apps/openssl s_server -cert cert.pem
 ```
 
 ### Run the exploit
